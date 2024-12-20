@@ -52,7 +52,7 @@ module MEM(
 
 
 
-    assign rf_wdata = sel_rf_res ? mem_result : ex_result;
+    assign rf_wdata =  ex_result;
 
     assign mem_to_wb_bus = {
         mem_pc,     // 69:38

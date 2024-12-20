@@ -2,6 +2,7 @@
 module CTRL(
     input wire rst,
     // input wire stallreq_for_ex,
+    input wire stallreq_from_id,
     // input wire stallreq_for_load,
 
     // output reg flush,
@@ -10,10 +11,10 @@ module CTRL(
 );  
     always @ (*) begin
         if (rst) begin
-            stall = `StallBus'b0;
+            stall <= `StallBus'b0;
         end
-        else begin
-            stall = `StallBus'b0;
+        else if(stallreq_from_id == 1'b1) begin
+            stall <= 6'b000111;
         end
     end
 
