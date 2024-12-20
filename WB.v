@@ -12,7 +12,7 @@ module WB(
     output wire [31:0] debug_wb_pc,
     output wire [3:0] debug_wb_rf_wen,
     output wire [4:0] debug_wb_rf_wnum,
-    output wire [31:0] debug_wb_rf_wdata 
+    output wire [31:0] debug_wb_rf_wdata
 );
 
     reg [`MEM_TO_WB_WD-1:0] mem_to_wb_bus_r;
