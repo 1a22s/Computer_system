@@ -188,7 +188,11 @@ module EX(
 
 endmodule
 
+
+
 // 自定义乘法除法模块
+//每次复位信号 rst 为高时，模块会清除乘法和除法的结果，确保系统从一个已知状态开始。具体地：mul_ready 和 div_ready 被清零，表示结果尚未准备好。
+//临时结果和余数也会被清零，确保没有遗留的值。
 module custom_mul_div (
     input               rst,            // 复位信号
     input               clk,            // 时钟信号
@@ -206,24 +210,31 @@ module custom_mul_div (
     reg [31:0] quotient, remainder;    // 除法的商和余数
     integer i;
 
-    // 乘法部分：递归乘法
+
+
+    // 乘法运算是通过逐位加法和位移来实现的。
+    //假设我们要计算 op1 * op2，其中 op1 是乘数，op2 是被乘数。我们可以通过按位检查 op2 来逐步构建乘积。
+    //如果 op2 的某一位是 1，则将 op1 左移该位数，并加到乘积中；
+    //如果 op2 的某一位是 0，则跳过该位，不做任何加法。
+    //如下的代码中，乘法部分使用了一个 for 循环遍历 op2 的每一位（从第 0 位到第 31 位）。如果某一位 op2[i] 为 1，则会将 op1 左移 i 位，并将其加到临时的乘法结果 temp_mul_result 中。最后，结果存储在 mul_result 中，并通过 mul_ready 信号告知乘法运算已经完成。
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             mul_ready <= 0;
-            temp_mul_result <= 0;
+            temp_mul_result <= 0;//每次开始新的乘法时清零结果。
         end else if (start_mul) begin
             temp_mul_result <= 0;
             for (i = 0; i < 32; i = i + 1) begin
-                if (op2[i]) begin
+                if (op2[i]) begin //如果 op2 的第 i 位为 1，则将 op1 左移 i 位后加到临时结果中
                     temp_mul_result = temp_mul_result + (op1 << i);
                 end
             end
-            mul_result <= temp_mul_result;
-            mul_ready <= 1;
+            mul_result <= temp_mul_result;//运算完成后，将结果赋值给输出 mul_result。
+            mul_ready <= 1;//ul_ready <= 1：表示乘法结果已准备好
         end
     end
 
-    // 除法部分：恢复除法算法
+    //除法部分使用的是经典的“恢复除法”算法，它是一种逐步求商和余数的算法
+    //代码中实现了一个 32 位的恢复除法算法。在每一时钟周期，余数 remainder 左移一位，并将被除数的最高位移入余数中。如果此时余数大于等于除数，则余数减去除数，并在商的对应位设为 1。否则，商对应位设为 0。
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             div_ready <= 0;
@@ -235,15 +246,15 @@ module custom_mul_div (
             quotient <= 0;
             remainder <= dividend;
             for (i = 31; i >= 0; i = i - 1) begin
-                remainder = remainder << 1;
-                remainder[0] <= dividend[31];  // 将最左边的位移入余数
-                dividend = dividend << 1;      // 被除数左移
-                if (remainder >= divisor) begin
+                remainder = remainder << 1;//每次将余数左移一位。
+                remainder[0] <= dividend[31];  // 将被除数的最高位移入余数的最低位。
+                dividend = dividend << 1;      // 将被除数左移，去掉已经处理的最高位。
+                if (remainder >= divisor) begin//如果余数大于等于除数，就减去除数并在商中设置 1。
                     remainder = remainder - divisor;
                     quotient[i] <= 1;
                 end
             end
-            div_result <= quotient;
+            div_result <= quotient;//并通过 div_ready 表示除法运算已完成。
             div_ready <= 1;
         end
     end
