@@ -1,21 +1,24 @@
 `include "lib/defines.vh"
+//ID阶段是指令解码阶段，通常发生在处理器流水线的第二个阶段。其主要任务是解码从前一个阶段（IF阶段，取指阶段）传来的指令，并为下一阶段（EX阶段，执行阶段）准备所需的数据和控制信号。
+//MEM阶段是内存访问阶段，通常发生在流水线的第四个阶段。这个阶段的主要任务是执行与内存相关的操作，比如数据存储或加载指令。
+//加载（Load）指令：如果是加载指令（例如LW，Load Word），MEM阶段将根据指令中的地址计算值，从数据内存（或数据SRAM）中加载数据。
+存储（Store）指令：如果是存储指令（例如SW，Store Word），MEM阶段会将数据写入数据内存。
 
 module EX(
     input wire clk,                        // 时钟信号
     input wire rst,                        // 复位信号
     input wire [StallBus-1:0] stall,      // 来自其他模块的停顿信号
-    input wire [ID_TO_EX_WD-1:0] id_to_ex_bus, // 从ID阶段传来的总线数据
+    input wire [ID_TO_EX_WD-1:0] id_to_ex_bus, // ID阶段解码后的数据会通过此总线传输到EX阶段，包含寄存器值、指令控制信号等。
 
-    output wire [EX_TO_MEM_WD-1:0] ex_to_mem_bus,  // 传递给MEM阶段的总线
-    output wire data_sram_en,              // 数据SRAM使能信号
-    output wire [3:0] data_sram_wen,       // 数据SRAM写使能信号
-    output wire [31:0] data_sram_addr,     // 数据SRAM的地址信号
+    output wire [EX_TO_MEM_WD-1:0] ex_to_mem_bus,  // EX阶段处理的结果会通过此总线传输到MEM阶段，通常包括计算后的地址、数据等。
+    output wire data_sram_en,              // 用于控制数据SRAM是否启用。当EX阶段或MEM阶段需要访问内存时，设为1表示内存操作启用
+    output wire [3:0] data_sram_wen,       // 数据SRAM的写使能信号。指示是否进行写操作，通常用于store指令。
+    output wire [31:0] data_sram_addr,     // 数据SRAM的地址信号，指示要访问的内存地址。
     output wire [37:0] ex_to_id,           // EX阶段的输出信息传递给ID阶段
     output wire [31:0] data_sram_wdata,    // 数据SRAM写入的数据
-    output wire stallreq_from_ex,          // EX阶段的停顿请求信号
-    output wire ex_is_load,                // 判断是否为加载指令（LW）
-    output wire [65:0] hilo_ex_to_id       // hi/lo寄存器的状态传递
-);
+    output wire stallreq_from_ex,          // EX阶段发出的停顿请求信号。用于请求ID或IF阶段暂停，以等待数据或解决依赖问题。
+    output wire ex_is_load,                // 指示当前EX阶段的指令是否为加载指令（如LW指令）。如果是加载指令，EX阶段需要进行内存访问。
+    output wire [65:0] hilo_ex_to_id       // 通常与高低位寄存器（HI/LO寄存器）相关，传递HI/LO寄存器的状态信息。
 
     // 寄存器，用于存储从ID阶段传来的数据
     reg [ID_TO_EX_WD-1:0] id_to_ex_bus_r;
